@@ -1,4 +1,4 @@
-#include "imblend_render_backend.h"
+#include "imx/render.h"
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>

@@ -1,0 +1,58 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 22,
+      "patch": 0
+    },
+    "configurePresets": [
+      {
+        "name": "release",
+        "displayName": "Release Build",
+        "description": "Generate an optimized build with minimal debug information.",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build/release",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG"
+        }
+      },
+      {
+        "name": "debug",
+        "displayName": "Debug Build",
+        "description": "Generate a debug build with full debug symbols.",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build/debug",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug",
+          "CMAKE_CXX_FLAGS": "-g"
+        }
+      },
+      {
+        "name": "sanitized",
+        "displayName": "Sanitized Build",
+        "description": "Generate a build with address and undefined behavior sanitizers.",
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build/sanitized",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+          "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+        }
+      }
+    ],
+    "buildPresets": [
+      {
+        "name": "release",
+        "configurePreset": "release"
+      },
+      {
+        "name": "debug",
+        "configurePreset": "debug"
+      },
+      {
+        "name": "sanitized",
+        "configurePreset": "sanitized"
+      }
+    ]
+  }
+  

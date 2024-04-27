@@ -4,21 +4,21 @@ from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
 
 class ImxRecipe(ConanFile):
     name = "imx"
-    version = "0.0"
+    version = "1.0.0"
     package_type = "application"
 
     # Optional metadata
     license = "MIT"
     author = "benny.edlund@gmail.com"
     url = "https://github.com/benny-edlund/imx"
-    description = "X11/blend2d backend for ImGui"
+    description = "A backend for ImGui built on blend2d & X11"
     topics = ("imgui", "X11", "blend2d")
 
     # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
 
     # Sources are located in the same place as this recipe, copy them to the recipe
-    exports_sources = "CMakeLists.txt", "src/*"
+    exports_sources = "CMakeLists.txt", "lib/*"
 
     def requirements(self):
         self.requires("imgui/1.90.1")
