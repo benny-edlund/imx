@@ -1,3 +1,4 @@
+#include "imx/platform_details.h"
 #include <algorithm>
 #include <blend2d.h>
 #include <cmath>
@@ -17,6 +18,8 @@
 #include <vector>
 
 #define IMBLEND_COLOR_PICKER_HACK 1;
+
+namespace imx {
 
 struct face_offset {
   ImWchar c;
@@ -82,6 +85,7 @@ struct imblend_context {
   std::vector<BLImage> textures{};
 
   explicit imblend_context(std::string_view font_filename,
+                           ImVec4 clear_color = {0.45F, 0.55F, 0.60F, 1.00F},
                            BLContextCreateInfo context_creation_info = {},
                            BLImageData shared_image_data = {});
 };
@@ -566,9 +570,11 @@ void render_draw_list(BLContext &ctx, std::vector<draw_list> const &lists,
 }
 
 imblend_context::imblend_context(std::string_view font_filename,
+                                 ImVec4 clear_color,
                                  BLContextCreateInfo context_creation_info,
                                  BLImageData shared_image_data)
-    : data(shared_image_data), info(context_creation_info) {
+    : data(shared_image_data), info(context_creation_info),
+      clear_color(clear_color) {
   ImGuiIO &io = ImGui::GetIO();
   auto &style = ImGui::GetStyle();
   ImFont *fnt = io.Fonts->AddFontFromFileTTF(font_filename.data(), 24);
@@ -620,42 +626,45 @@ imblend_context::imblend_context(std::string_view font_filename,
   }
 }
 
-bool imblend_initialize(std::string_view font_filename,
-                        BLContextCreateInfo context_creation_info,
-                        BLImageData shared_image_data) {
+bool initialize_renderer(std::string_view font_filename, ImVec4 clear_color,
+                         BLContextCreateInfo context_creation_info,
+                         BLImageData shared_image_data) {
   static std::unique_ptr<imblend_context> s_context;
-  static bool is_initialized = [&]() {
+  if (s_context == nullptr) {
     s_context = std::make_unique<imblend_context>(
-        font_filename, context_creation_info, shared_image_data);
+        font_filename, clear_color, context_creation_info, shared_image_data);
     ImGui::GetIO().BackendRendererUserData = s_context.get();
-    return true;
-  }();
-  return is_initialized;
+    ImGuiIO &io = ImGui::GetIO();
+    io.DisplaySize = ImVec2(shared_image_data.size.w, shared_image_data.size.h);
+  }
+  return s_context != nullptr;
 }
 
-bool imblend_new_frame(ImVec4 clear_color, BLImageData shared_image_data) {
-  if (auto *data = static_cast<imblend_context *>(
-          ImGui::GetIO().BackendRendererUserData)) {
-    if (shared_image_data.size.h != 0) {
-      if (data->img.createFromData(shared_image_data.size.w,
-                                   shared_image_data.size.w, BL_FORMAT_PRGB32,
-                                   shared_image_data.pixelData,
-                                   shared_image_data.stride) != BL_SUCCESS) {
+bool begin_frame() {
+  auto &io = ImGui::GetIO();
+  if (auto *data = static_cast<imblend_context *>(io.BackendRendererUserData)) {
+    if (auto *platform_data =
+            static_cast<imx_context *>(io.BackendPlatformUserData)) {
+      auto &image = *platform_data->windows.front().image;
+      if (data->img.createFromData(image.width(), image.height(),
+                                   BL_FORMAT_PRGB32, image.data(),
+                                   image.stride()) != BL_SUCCESS) {
         fmt::print("Failed to begin render with new shared image data\n");
         return false;
       }
+      io.DisplaySize = ImVec2(image.width(), image.height());
     }
-
     if (data->ctx.begin(data->img, data->info) == BL_SUCCESS) {
-      render_draw_list(data->ctx, data->draw_buffers[data->buffer++ % 2],
-                       as_rgba(ImGui::ColorConvertFloat4ToU32(clear_color)));
+      render_draw_list(
+          data->ctx, data->draw_buffers[data->buffer++ % 2],
+          as_rgba(ImGui::ColorConvertFloat4ToU32(data->clear_color)));
       return true;
     }
   }
   return false;
 }
 
-bool imblend_render(ImDrawData const *draw_data, BLContextFlushFlags flags) {
+bool render_frame(ImDrawData const *draw_data, BLContextFlushFlags flags) {
   ZoneScoped;
   if (auto *data = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
@@ -665,7 +674,7 @@ bool imblend_render(ImDrawData const *draw_data, BLContextFlushFlags flags) {
   return false;
 }
 
-BLImage &imblend_add_texture() {
+BLImage &add_texture() {
   if (auto *data = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
     return data->textures.emplace_back();
@@ -674,3 +683,5 @@ BLImage &imblend_add_texture() {
   invalid.reset();
   return invalid;
 }
+
+} // namespace imx

@@ -7,6 +7,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
 #include <X11/keysym.h>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fmt/core.h>
@@ -18,11 +19,13 @@
 #include <sys/shm.h>
 #include <tracy/Tracy.hpp>
 
+namespace imx {
+
 // Function to find a 32-bit ARGB visual
 Visual *find_argb_visual(Display *display, int screen) {
   XVisualInfo visualInfoTemplate{};
   visualInfoTemplate.screen = screen;
-  visualInfoTemplate.depth = 32;
+  visualInfoTemplate.depth = IMX_32BIT_DEPTH;
   visualInfoTemplate.c_class = TrueColor;
 
   int visualsMatched = 0;
@@ -49,15 +52,15 @@ Image::Image(Display *display, Visual *visual, int width, int height, int depth)
     : display_(display), visual_(visual), width_(sanitize_width(width)),
       height_(height), depth_(depth), stride_(width_ * 4) {
   memset(&info_, 0, sizeof(XShmSegmentInfo));
-  info_.shmid =
-      shmget(IPC_PRIVATE, width_ * height_ * (depth_ / sizeof(std::uint8_t)),
-             IPC_CREAT | 0600);
+  info_.shmid = shmget(IPC_PRIVATE,
+                       static_cast<unsigned long>(width_) * height_ *
+                           (depth_ / sizeof(std::uint8_t)),
+                       IPC_CREAT | 0600);
   info_.shmaddr = (char *)shmat(info_.shmid, nullptr, IPC_CREAT | 0600);
-  // shmdt(info_.shmaddr);
   info_.readOnly = False;
 
   // Attach the segment to the display
-  if (!XShmAttach(display_, &info_)) {
+  if (XShmAttach(display_, &info_) == 0) {
     fmt::print("Failed to attach shared memory\n");
     memset(&info_, 0, sizeof(XShmSegmentInfo));
   }
@@ -95,36 +98,36 @@ imx_context::imx_context()
                                visual, AllocNone)),
       input_method([](Display *display) {
         XSetLocaleModifiers("");
-        return unique_input_method(XOpenIM(display, NULL, NULL, NULL),
+        return unique_input_method(XOpenIM(display, nullptr, nullptr, nullptr),
                                    [](XIM owned) { XCloseIM(owned); });
       }(display.get())) {
-  if (!visual) {
+  if (visual == nullptr) {
     fmt::print("No 32-bit ARGB visual found\n");
     std::terminate();
   }
   if (!input_method) {
     XSetLocaleModifiers("@im=none");
-    input_method = unique_input_method(XOpenIM(display.get(), NULL, NULL, NULL),
-                                       [](XIM owned) { XCloseIM(owned); });
+    input_method =
+        unique_input_method(XOpenIM(display.get(), nullptr, nullptr, nullptr),
+                            [](XIM owned) { XCloseIM(owned); });
   }
 }
 
-bool imx_platform_initialize() {
+bool initialize_platform() {
   static std::unique_ptr<imx_context> s_context;
   if (s_context) {
     fmt::print("ImX context already initialized\n");
     return false;
   }
-  fmt::print("ImX initialized\n");
   s_context = std::make_unique<imx_context>();
   ImGui::GetIO().BackendPlatformUserData = s_context.get();
   return true;
 }
 
-bool imx_platform_create_window(std::uint32_t width, std::uint32_t height,
+bool create_window(std::uint32_t width, std::uint32_t height,
                                 std::uint32_t depth) {
-  if (auto *context = reinterpret_cast<imx_context *>(
-          ImGui::GetIO().BackendPlatformUserData)) {
+  if (auto *context =
+          static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     XSetWindowAttributes attrs;
     attrs.colormap = context->colormap;
     attrs.border_pixel = 0;
@@ -135,9 +138,9 @@ bool imx_platform_create_window(std::uint32_t width, std::uint32_t height,
                       RootWindow(context->display.get(), context->screen), 0, 0,
                       width, height, 0, depth, InputOutput, context->visual,
                       CWColormap | CWBorderPixel | CWBackPixel, &attrs);
-    auto xic = XCreateIC(context->input_method.get(), XNInputStyle,
-                         XIMPreeditNothing | XIMStatusNothing, XNClientWindow,
-                         window, XNFocusWindow, window, NULL);
+    auto *xic = XCreateIC(context->input_method.get(), XNInputStyle,
+                          XIMPreeditNothing | XIMStatusNothing, XNClientWindow,
+                          window, XNFocusWindow, window, NULL);
 
     XMapWindow(context->display.get(), window);
     XSelectInput(context->display.get(), window,
@@ -162,9 +165,9 @@ bool imx_platform_create_window(std::uint32_t width, std::uint32_t height,
 }
 
 // Function to translate X11 key codes to ImGui key codes
-ImGuiKey imx_platform_translate_key(XKeyEvent &event) {
+ImGuiKey translate_key(XKeyEvent &event) {
   KeySym keysym = XLookupKeysym(&event, 0);
-  if (event.state & ShiftMask) {
+  if ((event.state & ShiftMask) != 0U) {
     keysym = XLookupKeysym(&event, 1);
   }
 
@@ -218,19 +221,14 @@ ImGuiKey imx_platform_translate_key(XKeyEvent &event) {
   case XK_Insert:
     return ImGuiKey_Insert;
   case XK_Undo:
-    return ImGuiKey_None;
   case XK_Redo:
     return ImGuiKey_None;
   case XK_Menu:
     return ImGuiKey_Menu;
   case XK_Find:
-    return ImGuiKey_None;
   case XK_Cancel:
-    return ImGuiKey_None;
   case XK_Help:
-    return ImGuiKey_None;
   case XK_Break:
-    return ImGuiKey_None;
   case XK_Mode_switch:
     return ImGuiKey_None;
   case XK_Num_Lock:
@@ -532,9 +530,9 @@ ImGuiKey imx_platform_translate_key(XKeyEvent &event) {
   }
 }
 
-void imx_platform_poll_events() {
-  if (auto *context = reinterpret_cast<imx_context *>(
-          ImGui::GetIO().BackendPlatformUserData)) {
+void poll_events() {
+  if (auto *context =
+          static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     while (XPending(context->display.get()) > 0) {
       XEvent event;
       XNextEvent(context->display.get(), &event);
@@ -549,14 +547,12 @@ void imx_platform_poll_events() {
         io.AddFocusEvent(false);
         break;
       }
-
       case MotionNotify: {
         XMotionEvent motion_event = event.xmotion;
         ImGuiIO &io = ImGui::GetIO();
         io.AddMousePosEvent((float)motion_event.x, (float)motion_event.y);
         break;
       }
-
       case ButtonPress: {
         XButtonPressedEvent press_event = event.xbutton;
         ImGuiIO &io = ImGui::GetIO();
@@ -587,7 +583,6 @@ void imx_platform_poll_events() {
         }
         break;
       }
-
       case ButtonRelease: {
         XButtonPressedEvent press_event = event.xbutton;
         ImGuiIO &io = ImGui::GetIO();
@@ -609,7 +604,6 @@ void imx_platform_poll_events() {
         }
         break;
       }
-
       case KeyPress: {
         XKeyEvent press_event = event.xkey;
         ImGuiIO &io = ImGui::GetIO();
@@ -622,27 +616,25 @@ void imx_platform_poll_events() {
           imx_window &window = *found;
           static std::array<char, 256> buffer;
           KeySym key = 0;
-          Status status;
+          Status status = 0;
           std::size_t count = Xutf8LookupString(
               window.input_context.get(), &event.xkey, buffer.data(),
               buffer.size() - 1, &key, &status);
           count = std::min(count, buffer.size() - 1);
           buffer.at(count) = '\0';
-          if (count) {
+          if (count != 0U) {
             io.AddInputCharactersUTF8(buffer.data());
           }
-          io.AddKeyEvent(imx_platform_translate_key(press_event), true);
+          io.AddKeyEvent(translate_key(press_event), true);
         }
         break;
       }
       case KeyRelease: {
-        fmt::print("key release\n");
         XKeyEvent press_event = event.xkey;
         ImGuiIO &io = ImGui::GetIO();
-        io.AddKeyEvent(imx_platform_translate_key(press_event), false);
+        io.AddKeyEvent(translate_key(press_event), false);
         break;
       }
-
       case ConfigureNotify: {
         XConfigureEvent configure_event = event.xconfigure;
         auto found =
@@ -656,9 +648,9 @@ void imx_platform_poll_events() {
               configure_event.height != window.image->height()) {
             auto width = configure_event.width;
             auto height = configure_event.height;
-            window.image.reset(new Image(context->display.get(),
-                                         context->visual, width, height,
-                                         window.image->depth()));
+            window.image =
+                std::make_unique<Image>(context->display.get(), context->visual,
+                                        width, height, window.image->depth());
             ImGui::GetIO().DisplaySize = ImVec2(width, height);
           }
         }
@@ -674,7 +666,7 @@ void imx_platform_poll_events() {
         if (found != context->windows.end()) {
           ZoneScopedN("X11 (render)");
           imx_window &window = *found;
-          auto image_data = window.image->image();
+          auto *image_data = window.image->image();
           XShmPutImage(context->display.get(), window.window, window.gc.get(),
                        image_data, 0, 0, 0, 0, image_data->width,
                        image_data->height, 0);
@@ -688,9 +680,9 @@ void imx_platform_poll_events() {
   }
 }
 
-bool imx_platform_expose_again() {
-  if (auto *context = reinterpret_cast<imx_context *>(
-          ImGui::GetIO().BackendPlatformUserData)) {
+bool enqueue_expose() {
+  if (auto *context =
+          static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     for (auto const &handle : context->windows) {
       XExposeEvent exposeEvent = {Expose,
                                   0,
@@ -703,9 +695,11 @@ bool imx_platform_expose_again() {
                                   handle.image->height(),
                                   0};
       XSendEvent(context->display.get(), handle.window, False, ExposureMask,
-                 (XEvent *)&exposeEvent);
+                 reinterpret_cast<XEvent *>(&exposeEvent));
     }
     return true;
   }
   return false;
 }
+
+} // namespace imx

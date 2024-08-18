@@ -8,6 +8,8 @@
 #include <imgui.h>
 #include <memory>
 
+namespace imx {
+
 struct IMX_API Image {
   IMX_API Image(Display *display, Visual *visual, int width, int height,
                 int depth);
@@ -26,7 +28,7 @@ struct IMX_API Image {
   [[nodiscard]] IMX_API XImage *image() const;
 
 private:
-  XShmSegmentInfo info_;
+  XShmSegmentInfo info_{};
   Display *display_ = nullptr;
   Visual *visual_ = nullptr;
   std::unique_ptr<XImage, void (*)(XImage *)> image_{nullptr, [](auto *) {}};
@@ -63,5 +65,7 @@ struct IMX_API imx_context {
   imx_context();
 };
 
-IMX_API ImGuiKey imx_platform_translate_key(XKeyEvent &event);
-IMX_API bool imx_platform_expose_again();
+IMX_API ImGuiKey translate_key(XKeyEvent &event);
+IMX_API bool enqueue_expose();
+
+} // namespace imx
