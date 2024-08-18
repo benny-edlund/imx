@@ -1,15 +1,5 @@
-#include <imx/render.h>
 #include <algorithm>
-#include <blend2d/api.h>
-#include <blend2d/context.h>
-#include <blend2d/format.h>
-#include <blend2d/geometry.h>
-#include <blend2d/gradient.h>
-#include <blend2d/image.h>
-#include <blend2d/matrix.h>
-#include <blend2d/path.h>
-#include <blend2d/pattern.h>
-#include <blend2d/rgba.h>
+#include <blend2d.h>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -17,6 +7,7 @@
 #include <fmt/core.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <imx/render.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -32,8 +23,10 @@ struct face_offset {
   float x;
   float y;
 };
+namespace {
 std::map<std::uint64_t, face_offset> g_font_look_up{};
 std::array<float, 2> g_h_uv{};
+} // namespace
 
 template <std::size_t N> struct text {
   static constexpr std::size_t size = N;
@@ -83,14 +76,14 @@ struct imblend_context {
   BLImageData data{};
   BLContextCreateInfo info{};
   BLFont font{};
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+  ImVec4 clear_color = ImVec4(0.45F, 0.55F, 0.60F, 1.00F);
   std::array<std::vector<draw_list>, 2> draw_buffers;
   std::size_t buffer = 0;
   std::vector<BLImage> textures{};
 
-  imblend_context(std::string_view font_filename,
-                  BLContextCreateInfo context_creation_info = {},
-                  BLImageData shared_image_data = {});
+  explicit imblend_context(std::string_view font_filename,
+                           BLContextCreateInfo context_creation_info = {},
+                           BLImageData shared_image_data = {});
 };
 
 struct edge_t {
@@ -101,24 +94,26 @@ struct edge_t {
   ImTextureID texture;
 };
 
-std::uint64_t hash_edge(std::uint32_t a, std::uint32_t b) {
-  return (static_cast<std::uint64_t>(a) << 32) | static_cast<std::uint64_t>(b);
+constexpr std::uint64_t hash_edge(std::uint32_t const a,
+                                  std::uint32_t const b) noexcept {
+  return (static_cast<std::uint64_t>(a) << 32U) | static_cast<std::uint64_t>(b);
 }
 
-std::uint32_t hash_edge(std::uint16_t a, std::uint16_t b) {
-  return (static_cast<std::uint32_t>(a) << 16) | static_cast<std::uint32_t>(b);
+constexpr std::uint32_t hash_edge(std::uint16_t a, std::uint16_t b) {
+  return (static_cast<std::uint32_t>(a) << 16U) | static_cast<std::uint32_t>(b);
 }
 
-std::uint64_t uv_to_key(float u, float v) {
-  return hash_edge(static_cast<std::uint32_t>(u * 1000),
-                   static_cast<std::uint32_t>(v * 1000));
+constexpr std::uint64_t uv_to_key(float u, float v) {
+  return hash_edge(static_cast<std::uint32_t>(u * 1000U),
+                   static_cast<std::uint32_t>(v * 1000U));
 }
 
-bool almostEqual(double a, double b, double epsilon = 1e-6) {
+constexpr bool almostEqual(double a, double b, double epsilon = 1e-6) {
   return std::fabs(a - b) < epsilon;
 }
 
-template <typename Container> BLRect get_bounds(Container const &points) {
+template <typename Container>
+constexpr BLRect get_bounds(Container const &points) {
   double max_x = -std::numeric_limits<double>::max();
   double min_x = std::numeric_limits<double>::max();
   double min_y = min_x;
@@ -129,19 +124,19 @@ template <typename Container> BLRect get_bounds(Container const &points) {
     max_y = std::max(pt.y, max_y);
     min_y = std::min(pt.y, min_y);
   }
-  return BLRect(min_x, min_y, max_x - min_x, max_y - min_y);
+  return {min_x, min_y, max_x - min_x, max_y - min_y};
 }
 
-template <> BLRect get_bounds<ImVec4>(ImVec4 const &vec4) {
+template <> constexpr BLRect get_bounds<ImVec4>(ImVec4 const &vec4) {
 
-  return BLRect(vec4.x, vec4.y, vec4.z - vec4.x, vec4.w - vec4.y);
+  return {vec4.x, vec4.y, vec4.z - vec4.x, vec4.w - vec4.y};
 }
 
-bool operator==(edge_t const &a, edge_t const &b) {
+constexpr bool operator==(edge_t const &a, edge_t const &b) {
   return a.p0 == b.p0 && a.p1 == b.p1;
 }
 
-bool operator<(edge_t const &a, edge_t const &b) {
+constexpr bool operator<(edge_t const &a, edge_t const &b) {
   if (a.p0 < b.p0)
     return true;
   if (a.p0 > b.p0)
@@ -156,7 +151,7 @@ template <std::size_t N> void draw(BLContext &ctx, text<N> const &unicode) {
 }
 
 BLMatrix2D as_transform(BLRect uvs, double width, double height) {
-  BLMatrix2D M;
+  BLMatrix2D M{};
   M.scale(uvs.w, uvs.h);
   M.translate(BLPoint(-uvs.x * width, -uvs.y * height));
   return M;
@@ -231,10 +226,12 @@ void draw(BLContext &ctx, graded_quad const &poly) {
       return cols[0] == cols[3] && cols[1] == cols[2];
     };
     auto is_vertical = [](std::array<BLRgba32, 4> const &cols) {
-      return cols[0] == cols[1] && cols[2] == cols[2];
+      return cols[0] == cols[1] && cols[3] == cols[2];
     };
 
-    BLRectI rect(min_x, min_y, max_x - min_x, max_y - min_y);
+    BLRectI rect(static_cast<int>(min_x), static_cast<int>(min_y),
+                 static_cast<int>(max_x - min_x),
+                 static_cast<int>(max_y - min_y));
 
     auto tmp = poly.colors;
     tmp[0] = poly.colors[pt0_idx];
@@ -270,12 +267,12 @@ void draw(BLContext &ctx, line const &line) {
   ctx.strokePath(path, line.color);
 }
 
-bool operator<(shape const &a, shape const &b) {
+constexpr bool operator<(shape const &a, shape const &b) {
   return std::visit([](auto const &i) { return i.depth; }, a) <
          std::visit([](auto const &i) { return i.depth; }, b);
 }
 
-bool operator==(shape const &a, shape const &b) {
+constexpr bool operator==(shape const &a, shape const &b) {
   return std::visit([](auto const &i) { return i.depth; }, a) ==
          std::visit([](auto const &i) { return i.depth; }, b);
 }
@@ -295,7 +292,7 @@ bool create_glyph(std::vector<shape> &output, ImDrawVert const &vtx,
                   std::uint32_t current_depth) {
   ZoneScoped;
 
-  if (imblend_context *context = reinterpret_cast<imblend_context *>(
+  if (auto *context = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
     std::array<float, 2> uv = {vtx.uv.x, vtx.uv.y};
     auto key = uv_to_key(uv[0], uv[1]);
@@ -329,13 +326,13 @@ void generate_edges(std::map<edge_t, bool> &output, ImDrawIdx const *idx_buffer,
       true);
   output.at(iter->first) = inserted;
   std::tie(iter, inserted) = output.try_emplace(
-      std::move(edge_t{idx_buffer[start + 1], idx_buffer[start + 2],
-                       vtx_buffer[idx_buffer[start + 1]].col, depth, texture}),
+      edge_t{idx_buffer[start + 1], idx_buffer[start + 2],
+             vtx_buffer[idx_buffer[start + 1]].col, depth, texture},
       true);
   output.at(iter->first) = inserted;
   std::tie(iter, inserted) = output.try_emplace(
-      std::move(edge_t{idx_buffer[start + 0], idx_buffer[start + 2],
-                       vtx_buffer[idx_buffer[start + 2]].col, depth, texture}),
+      edge_t{idx_buffer[start + 0], idx_buffer[start + 2],
+             vtx_buffer[idx_buffer[start + 2]].col, depth, texture},
       true);
   output.at(iter->first) = inserted;
 }
@@ -361,7 +358,7 @@ bool is_graded_quad(std::vector<BLPoint> const &outline,
   // This section is overly commented so we will remember all our
   // assumtions later on when this breaks
   //
-  auto is_rect = [](std::vector<BLPoint> pnts) {
+  auto is_rect = [](std::vector<BLPoint> const &pnts) {
     // We assume a rectangle is made up of points 1, 2, 3, 4 and 5
     // replicating point 1
     if (pnts.size() != 5) {
@@ -416,12 +413,10 @@ shape generate_shape(std::vector<BLPoint> const &outline,
                        depth,
                        texid};
   } else {
-    return polygon{std::move(outline), std::move(uvs), colors.front(), depth,
-                   texid};
+    return polygon{outline, uvs, colors.front(), depth, texid};
   }
 #else
-  return polygon{std::move(outline), std::move(uvs), colors.front(), depth,
-                 texid};
+  return polygon{outline, uvs, colors.front(), depth, texid};
 #endif
 }
 
@@ -431,9 +426,9 @@ void generate_topology(std::vector<shape> &output,
   ZoneScoped;
   std::vector<edge_t> unique_edges;
   {
-    for (auto iter = edges.cbegin(); iter != edges.cend(); ++iter) {
-      if (iter->second) {
-        unique_edges.push_back(iter->first);
+    for (const auto &edge : edges) {
+      if (edge.second) {
+        unique_edges.push_back(edge.first);
       }
     }
     std::sort(unique_edges.begin(), unique_edges.end(),
@@ -454,15 +449,14 @@ void generate_topology(std::vector<shape> &output,
       ImDrawIdx currentEnd = edge->p1;
       bool shapeClosed = false;
       const ImDrawVert &vtxStart = vtx_buffer[start];
-      outline.push_back(
-          BLPoint{vtxStart.pos.x, vtxStart.pos.y}); // Add start vertex
-      uvs.push_back(BLPoint{vtxStart.uv.x, vtxStart.uv.y});
+      outline.emplace_back(vtxStart.pos.x, vtxStart.pos.y); // Add start vertex
+      uvs.emplace_back(vtxStart.uv.x, vtxStart.uv.y);
       colors.push_back(as_rgba(vtxStart.col));
 
       while (!shapeClosed) {
         const ImDrawVert &vtx = vtx_buffer[currentEnd];
-        outline.push_back(BLPoint{vtx.pos.x, vtx.pos.y});
-        uvs.push_back(BLPoint{vtx.uv.x, vtx.uv.y});
+        outline.emplace_back(vtx.pos.x, vtx.pos.y);
+        uvs.emplace_back(vtx.uv.x, vtx.uv.y);
         colors.push_back(as_rgba(vtx.col));
         if (currentEnd == start) {
           shapeClosed = true;
@@ -512,7 +506,7 @@ void process_draw_data(std::vector<draw_list> &blend_data,
 
     for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
       const ImDrawCmd *pcmd = &cmd_list->CmdBuffer[cmd_i];
-      if (pcmd->UserCallback) {
+      if (pcmd->UserCallback != nullptr) {
         pcmd->UserCallback(cmd_list, pcmd);
       } else {
         std::map<edge_t, bool> edges;
@@ -585,40 +579,35 @@ imblend_context::imblend_context(std::string_view font_filename,
   io.Fonts->AddFontDefault(&fontConfig);
   io.FontGlobalScale = 1.;
   // Build atlas
-  unsigned char *tex_pixels = NULL;
-  int tex_w, tex_h;
+  unsigned char *tex_pixels = nullptr;
+  int tex_w = 0;
+  int tex_h = 0;
   io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
 
   for (auto const &character : fnt->IndexLookup) {
-    auto *glyph = fnt->FindGlyph(character);
+    const auto *glyph = fnt->FindGlyph(character);
     if (glyph == nullptr) {
       fmt::print("Failed to find glyph for {}\n", character);
       std::terminate();
     }
 
-    // auto *u = reinterpret_cast<std::uint32_t const *>(&glyph->U0);
-    // auto *v = reinterpret_cast<std::uint32_t const *>(&glyph->V0);
     std::uint64_t uv = uv_to_key(glyph->U0, glyph->V0);
     face_offset offset{character, 0, 0};
     std::tie(offset.x, offset.y) =
         get_glyph_offset(glyph, fontConfig.SizePixels);
-    g_font_look_up[uv] = std::move(offset);
-    // fmt::print("{} == {}  <{} {}> <{} {}>\n", character, uv, glyph->X0,
-    //            glyph->Y0, glyph->X1, glyph->Y1);
+    g_font_look_up[uv] = offset;
   }
   textures.reserve(1024);
 
   BLImage &fonts = textures.emplace_back(tex_w, tex_h, BL_FORMAT_PRGB32);
   fonts.createFromData(tex_w, tex_h, BL_FORMAT_PRGB32, tex_pixels, 4 * tex_w);
   // fonts.writeToFile("fonts.png");
-  ImGui::GetIO().Fonts->TexID = reinterpret_cast<void *>(&fonts);
   ImTextureID font_texture = ImGui::GetIO().Fonts->TexID;
 
   img.createFromData(shared_image_data.size.w, shared_image_data.size.w,
                      BL_FORMAT_PRGB32, shared_image_data.pixelData,
                      shared_image_data.stride);
 
-  // BLContext ctx(img, info);  <<<<<<<<<<<<<< run this in begin_render( )
   BLFontFace face;
   if (face.createFromFile(font_filename.data()) != BL_SUCCESS) {
     fmt::print("Failed to load a font face from {}\n", font_filename);
@@ -636,8 +625,8 @@ bool imblend_initialize(std::string_view font_filename,
                         BLImageData shared_image_data) {
   static std::unique_ptr<imblend_context> s_context;
   static bool is_initialized = [&]() {
-    s_context.reset(new imblend_context{font_filename, context_creation_info,
-                                        shared_image_data});
+    s_context = std::make_unique<imblend_context>(
+        font_filename, context_creation_info, shared_image_data);
     ImGui::GetIO().BackendRendererUserData = s_context.get();
     return true;
   }();
@@ -645,7 +634,7 @@ bool imblend_initialize(std::string_view font_filename,
 }
 
 bool imblend_new_frame(ImVec4 clear_color, BLImageData shared_image_data) {
-  if (imblend_context *data = reinterpret_cast<imblend_context *>(
+  if (auto *data = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
     if (shared_image_data.size.h != 0) {
       if (data->img.createFromData(shared_image_data.size.w,
@@ -656,7 +645,7 @@ bool imblend_new_frame(ImVec4 clear_color, BLImageData shared_image_data) {
         return false;
       }
     }
-    
+
     if (data->ctx.begin(data->img, data->info) == BL_SUCCESS) {
       render_draw_list(data->ctx, data->draw_buffers[data->buffer++ % 2],
                        as_rgba(ImGui::ColorConvertFloat4ToU32(clear_color)));
@@ -668,7 +657,7 @@ bool imblend_new_frame(ImVec4 clear_color, BLImageData shared_image_data) {
 
 bool imblend_render(ImDrawData const *draw_data, BLContextFlushFlags flags) {
   ZoneScoped;
-  if (imblend_context *data = reinterpret_cast<imblend_context *>(
+  if (auto *data = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
     process_draw_data(data->draw_buffers[data->buffer % 2], draw_data);
     return data->ctx.flush(flags) == BL_SUCCESS;
@@ -677,7 +666,7 @@ bool imblend_render(ImDrawData const *draw_data, BLContextFlushFlags flags) {
 }
 
 BLImage &imblend_add_texture() {
-  if (imblend_context *data = reinterpret_cast<imblend_context *>(
+  if (auto *data = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
     return data->textures.emplace_back();
   }
