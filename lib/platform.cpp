@@ -1,5 +1,5 @@
-#include "imx/platform.h"
-#include "imx/platform_details.h"
+#include "imx/context.h"
+#include "imx/imx.h"
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
@@ -113,19 +113,8 @@ imx_context::imx_context()
   }
 }
 
-bool initialize_platform() {
-  static std::unique_ptr<imx_context> s_context;
-  if (s_context) {
-    fmt::print("ImX context already initialized\n");
-    return false;
-  }
-  s_context = std::make_unique<imx_context>();
-  ImGui::GetIO().BackendPlatformUserData = s_context.get();
-  return true;
-}
-
 bool create_window(std::uint32_t width, std::uint32_t height,
-                                std::uint32_t depth) {
+                   std::uint32_t depth) {
   if (auto *context =
           static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     XSetWindowAttributes attrs;

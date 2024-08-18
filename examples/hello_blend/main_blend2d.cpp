@@ -1,6 +1,5 @@
-#include "imx/platform.h"
-#include "imx/platform_details.h"
-#include "imx/render.h"
+#include "imx/context.h"
+#include "imx/imx.h"
 #include <cassert>
 #include <chrono>
 #include <fmt/core.h>
@@ -14,8 +13,7 @@ int main() {
   auto *ctx = ImGui::CreateContext();
   assert(ctx && "Unable to create imgui context");
 
-  imx::initialize_platform();
-  imx::initialize_renderer(s_ttf_font);
+  imx::initialize(s_ttf_font);
 
   bool show_demo_window = false;
   bool show_another_window = false;
@@ -104,7 +102,7 @@ int main() {
       ImGui::End();
     }
     ImGui::Render();
-    if (!imx::render_frame(ImGui::GetDrawData(), BL_CONTEXT_FLUSH_SYNC)) {
+    if (!imx::render_frame(ImGui::GetDrawData(), clear_color, BL_CONTEXT_FLUSH_SYNC)) {
       fmt::print("Imblend render failed\n");
     }
 

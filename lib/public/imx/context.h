@@ -4,6 +4,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+#include <blend2d.h>
 #include <functional>
 #include <imgui.h>
 #include <memory>
@@ -67,5 +68,6 @@ struct IMX_API imx_context {
 
 IMX_API ImGuiKey translate_key(XKeyEvent &event);
 IMX_API bool enqueue_expose();
+IMX_API BLImage &add_texture();
 
 } // namespace imx

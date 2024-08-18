@@ -1,4 +1,5 @@
-#include "imx/platform_details.h"
+#include "imx/context.h"
+#include "imx/imx.h"
 #include <algorithm>
 #include <blend2d.h>
 #include <cmath>
@@ -8,7 +9,6 @@
 #include <fmt/core.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <imx/render.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -626,6 +626,17 @@ imblend_context::imblend_context(std::string_view font_filename,
   }
 }
 
+bool initialize_platform() {
+  static std::unique_ptr<imx_context> s_context;
+  if (s_context) {
+    fmt::print("ImX context already initialized\n");
+    return false;
+  }
+  s_context = std::make_unique<imx_context>();
+  ImGui::GetIO().BackendPlatformUserData = s_context.get();
+  return true;
+}
+
 bool initialize_renderer(std::string_view font_filename, ImVec4 clear_color,
                          BLContextCreateInfo context_creation_info,
                          BLImageData shared_image_data) {
@@ -638,6 +649,14 @@ bool initialize_renderer(std::string_view font_filename, ImVec4 clear_color,
     io.DisplaySize = ImVec2(shared_image_data.size.w, shared_image_data.size.h);
   }
   return s_context != nullptr;
+}
+
+bool initialize(std::string_view font_filename, ImVec4 clear_color,
+                BLContextCreateInfo context_creation_info,
+                BLImageData shared_image_data) {
+  return initialize_platform() &&
+         initialize_renderer(font_filename, clear_color, context_creation_info,
+                             shared_image_data);
 }
 
 bool begin_frame() {
@@ -664,12 +683,17 @@ bool begin_frame() {
   return false;
 }
 
-bool render_frame(ImDrawData const *draw_data, BLContextFlushFlags flags) {
+bool render_frame(ImDrawData const *draw_data, ImVec4 clear_color,
+                  BLContextFlushFlags flags) {
   ZoneScoped;
-  if (auto *data = static_cast<imblend_context *>(
+  if (auto *context = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
-    process_draw_data(data->draw_buffers[data->buffer % 2], draw_data);
-    return data->ctx.flush(flags) == BL_SUCCESS;
+    if (clear_color.x != IMX_NO_COLOR.x || clear_color.y != IMX_NO_COLOR.y ||
+        clear_color.z != IMX_NO_COLOR.z || clear_color.w != IMX_NO_COLOR.w) {
+      context->clear_color = clear_color;
+    }
+    process_draw_data(context->draw_buffers[context->buffer % 2], draw_data);
+    return context->ctx.flush(flags) == BL_SUCCESS;
   }
   return false;
 }
