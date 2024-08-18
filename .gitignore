@@ -34,3 +34,4 @@
 build
 .git
 .cache
+.vscode/launch.json

@@ -5,6 +5,9 @@ set(ENABLE_DEVELOPER_MODE OFF CACHE BOOL "Enable 'developer mode'")
 set(ENABLE_COVERAGE OFF CACHE BOOL "Enable 'coverage mode'")
 set(OPT_WARNINGS_AS_ERRORS_DEVELOPER_DEFAULT TRUE)
 
+include( dependencies.cmake )
+set( CMAKE_TOOLCHAIN_FILE ${CONAN_TOOLCHAIN_FILE} )
+
 # Set the project name and language
 project(
   imx
@@ -13,23 +16,8 @@ project(
   HOMEPAGE_URL "%%https://github.com/benny-edlund/imx%%"
   LANGUAGES CXX )
 
-# # # This variable is set by project() in CMake 3.21+
-# string(
-#   COMPARE EQUAL
-#           "${CMAKE_SOURCE_DIR}"
-#           "${PROJECT_SOURCE_DIR}"
-#           PROJECT_IS_TOP_LEVEL)
-# if(PROJECT_IS_TOP_LEVEL)
-#   include(CTest)
-#   if(CMAKE_COMPILER_IS_GNUCXX)
-#     LIST(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
-#   endif()
-# endif()
-
-set(GIT_SHA "Unknown" CACHE STRING "SHA this build was generated from")
-string( SUBSTRING "${GIT_SHA}" 0 8 GIT_SHORT_SHA)
-
 add_subdirectory(lib)
+add_subdirectory(examples)
 
 # Adding the tests:
 option(ENABLE_TESTING "Enable the tests" ${PROJECT_IS_TOP_LEVEL})

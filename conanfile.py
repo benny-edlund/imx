@@ -13,16 +13,14 @@ class ImxRecipe(ConanFile):
     url = "https://github.com/benny-edlund/imx"
     description = "A backend for ImGui built on blend2d & X11"
     topics = ("imgui", "X11", "blend2d")
-
-    # Binary configuration
     settings = "os", "compiler", "build_type", "arch"
-
-    # Sources are located in the same place as this recipe, copy them to the recipe
     exports_sources = "CMakeLists.txt", "lib/*"
+    options = {"shared": [True, False]}
+    default_options = {"shared": False}
 
     def requirements(self):
-        self.requires("imgui/1.90.1")
-        self.requires("blend2d/0.10.5")
+        self.requires("imgui/1.91.0")
+        self.requires("blend2d/0.11.4")
         self.requires("glfw/3.3.8")
         self.requires("fmt/10.2.1")
         self.requires("gsl/2.7.1")
@@ -36,6 +34,9 @@ class ImxRecipe(ConanFile):
         deps.generate()
         tc = CMakeToolchain(self)
         tc.generate()
+    
+    def configure(self):
+        self.options["imgui"].shared = True
 
     def build(self):
         cmake = CMake(self)

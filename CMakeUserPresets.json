@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 3,
     "cmakeMinimumRequired": {
       "major": 3,
       "minor": 22,
@@ -7,33 +7,33 @@
     },
     "configurePresets": [
       {
-        "name": "release",
+        "name": "Release",
         "displayName": "Release Build",
         "description": "Generate an optimized build with minimal debug information.",
         "generator": "Ninja",
-        "binaryDir": "${sourceDir}/build/release",
+        "binaryDir": "${sourceDir}/build/Release",
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "Release",
           "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG"
         }
       },
       {
-        "name": "debug",
+        "name": "Debug",
         "displayName": "Debug Build",
         "description": "Generate a debug build with full debug symbols.",
         "generator": "Ninja",
-        "binaryDir": "${sourceDir}/build/debug",
+        "binaryDir": "${sourceDir}/build/Debug",
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "Debug",
           "CMAKE_CXX_FLAGS": "-g"
         }
       },
       {
-        "name": "sanitized",
+        "name": "Sanitized",
         "displayName": "Sanitized Build",
         "description": "Generate a build with address and undefined behavior sanitizers.",
         "generator": "Ninja",
-        "binaryDir": "${sourceDir}/build/sanitized",
+        "binaryDir": "${sourceDir}/build/Sanitized",
         "cacheVariables": {
           "CMAKE_BUILD_TYPE": "RelWithDebInfo",
           "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer -g"
@@ -42,16 +42,16 @@
     ],
     "buildPresets": [
       {
-        "name": "release",
-        "configurePreset": "release"
+        "name": "Release",
+        "configurePreset": "Release"
       },
       {
-        "name": "debug",
-        "configurePreset": "debug"
+        "name": "Debug",
+        "configurePreset": "Debug"
       },
       {
-        "name": "sanitized",
-        "configurePreset": "sanitized"
+        "name": "Sanitized",
+        "configurePreset": "Sanitized"
       }
     ]
   }

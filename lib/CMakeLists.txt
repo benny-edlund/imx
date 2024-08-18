@@ -3,24 +3,33 @@ include(GenerateExportHeader)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
+find_package(blend2d)
+find_package(Tracy)
+find_package(imgui)
+find_package(fmt)
+
 set(HEADER_LIST 
 	${CMAKE_CURRENT_BINARY_DIR}/imx/api.h
 	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/render.h
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/platform.h
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/platform_details.h
 )
 
-# Static library
-add_library(imx_static render.cpp "${HEADER_LIST}")
-target_include_directories(
-  imx_static 
-  PUBLIC  
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public> 
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-)
-target_include_directories(imx_static PRIVATE "${CMAKE_BINARY_DIR}/configured_files/include")
-target_compile_definitions( imx_static PUBLIC imx_STATIC_DEFINE )
+# # Static library
+# add_library(imx_static render.cpp "${HEADER_LIST}")
+# target_link_libraries(imgui::imgui blend2d::blend2d tracy )
+# target_include_directories(
+#   imx_static 
+#   PUBLIC  
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public> 
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+# )
+# target_include_directories(imx_static PRIVATE "${CMAKE_BINARY_DIR}/configured_files/include")
+# target_compile_definitions( imx_static PUBLIC imx_STATIC_DEFINE )
 
 # Shared library
-add_library(imx SHARED render.cpp "${HEADER_LIST}")
+add_library(imx SHARED render.cpp platform.cpp "${HEADER_LIST}")
+target_link_libraries( imx blend2d::blend2d Tracy::TracyClient imgui::imgui fmt::fmt )
 target_include_directories(
   imx 
   PUBLIC  
@@ -28,7 +37,7 @@ target_include_directories(
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   )
   target_include_directories(imx PRIVATE "${CMAKE_BINARY_DIR}/configured_files/include")
-  target_compile_definitions( imx_static PUBLIC imx_DEFINE )
+  target_compile_definitions( imx PUBLIC imx_DEFINE )
 
 generate_export_header(
   imx
@@ -38,7 +47,8 @@ generate_export_header(
   NO_EXPORT_MACRO_NAME IMX_HIDDEN
 )
 
-install(TARGETS imx imx_static
+# install(TARGETS imx imx_static
+install(TARGETS imx
 EXPORT imx_targets
 LIBRARY DESTINATION lib
 ARCHIVE DESTINATION lib
@@ -62,7 +72,7 @@ install(FILES
 
 if ( CMAKE_COMPILER_IS_GNUCXX AND ENABLE_COVERAGE )
   target_compile_options(imx PRIVATE -g -coverage )
-  target_compile_options(imx_static PRIVATE -g -coverage )
+  # target_compile_options(imx_static PRIVATE -g -coverage )
 endif()
 
 if ( ENABLE_DEVELOPER_MODE )
