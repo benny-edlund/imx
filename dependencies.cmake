@@ -18,7 +18,7 @@ set(MARKER_FILE "${CMAKE_BINARY_DIR}/ran_command.marker")
 if(NOT EXISTS "${MARKER_FILE}")
     # Run conan install command with the appropriate profile before configuring the project
     execute_process(
-        COMMAND conan install . --profile "${CMAKE_CURRENT_LIST_DIR}/.conan2/dynamic" --build=missing --settings=build_type=${BUILD_TYPE}
+        COMMAND conan install . --profile "${CMAKE_CURRENT_LIST_DIR}/.conan2/dynamic" --build=missing -c tools.system.package_manager:mode=install --settings=build_type=${BUILD_TYPE}
         RESULT_VARIABLE CONAN_INSTALL_RESULT
         OUTPUT_VARIABLE CONAN_INSTALL_OUTPUT
     )
