@@ -36,3 +36,4 @@ build
 .cache
 .vscode/launch.json
 imgui.ini
+*.tracy

@@ -10,9 +10,9 @@ find_package(fmt)
 
 set(HEADER_LIST 
 	${CMAKE_CURRENT_BINARY_DIR}/imx/api.h
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/imx.h
 	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/render.h
-	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/platform.h
-	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/platform_details.h
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/context.h
 )
 
 # # Static library

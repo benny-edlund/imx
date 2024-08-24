@@ -24,7 +24,7 @@ class ImxRecipe(ConanFile):
         self.requires("glfw/3.3.8")
         self.requires("fmt/10.2.1")
         self.requires("gsl/2.7.1")
-        self.requires("tracy/0.10")
+        self.requires("tracy/0.11.0")
 
     def layout(self):
         cmake_layout(self)
