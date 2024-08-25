@@ -7,6 +7,7 @@
 #include <blend2d.h>
 #include <functional>
 #include <imgui.h>
+#include <limits>
 #include <memory>
 
 namespace imx {
@@ -52,6 +53,8 @@ struct IMX_API imx_window {
   unique_graphics_context gc;
   unique_image image;
   unique_input_context input_context;
+  std::array<int, 2> size_updates{std::numeric_limits<int>::max(),
+                                  std::numeric_limits<int>::max()};
 };
 
 struct IMX_API imx_context {
@@ -67,7 +70,9 @@ struct IMX_API imx_context {
 };
 
 IMX_API ImGuiKey translate_key(XKeyEvent &event);
-IMX_API bool enqueue_expose();
 IMX_API BLImage &add_texture();
+IMX_API bool begin_frame();
+IMX_API bool end_frame(BLContextFlushFlags flags = BL_CONTEXT_FLUSH_NO_FLAGS);
+IMX_API bool enqueue_expose();
 
 } // namespace imx

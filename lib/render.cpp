@@ -1,5 +1,6 @@
 #include "imx/context.h"
 #include "imx/imx.h"
+#include <X11/Xlib.h>
 #include <algorithm>
 #include <blend2d.h>
 #include <cmath>
@@ -501,7 +502,8 @@ void process_draw_data(std::vector<draw_list> &blend_data,
   ZoneScoped;
   blend_data.clear();
   for (int n = 0; n < draw_data->CmdListsCount; n++) {
-    ZoneScopedN("Draw list");
+    ZoneScopedN("process command list");
+    ZoneValue(n);
     const ImDrawList *cmd_list = draw_data->CmdLists[n];
     const ImDrawVert *vtx_buffer = cmd_list->VtxBuffer.Data;
     const ImDrawIdx *idx_buffer = cmd_list->IdxBuffer.Data;
@@ -509,6 +511,9 @@ void process_draw_data(std::vector<draw_list> &blend_data,
     draw_list &list = blend_data.emplace_back();
 
     for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
+      ZoneScopedN("process command buffer");
+      ZoneValue(cmd_i);
+
       const ImDrawCmd *pcmd = &cmd_list->CmdBuffer[cmd_i];
       if (pcmd->UserCallback != nullptr) {
         pcmd->UserCallback(cmd_list, pcmd);
@@ -524,7 +529,7 @@ void process_draw_data(std::vector<draw_list> &blend_data,
         // signal this
         bool skip_next = false;
         {
-          ZoneScopedN("Collect data");
+          ZoneScopedN("collect data");
           for (unsigned int i = 0; i < pcmd->ElemCount; i += 3) {
             if (skip_next) {
               skip_next = false;
@@ -532,7 +537,7 @@ void process_draw_data(std::vector<draw_list> &blend_data,
             }
             ImTextureID texture = pcmd->TextureId;
             if (texture == ImGui::GetFont()->ContainerAtlas->TexID) {
-              ZoneScopedN("Check font");
+              ZoneScopedN("check font");
               const ImDrawVert &vtx = vtx_buffer[idx_buffer[i + 0]];
               if (create_glyph(data.second, vtx, current_depth++)) {
                 skip_next = true;
@@ -556,8 +561,8 @@ auto get_glyph_offset(ImFontGlyph const *glyph, float font_size) {
   return std::make_pair(glyph->X0, glyph->Y0 - font_size * s_magic_ratio);
 }
 
-void render_draw_list(BLContext &ctx, std::vector<draw_list> const &lists,
-                      BLRgba32 clear_color) {
+void render_frame(BLContext &ctx, std::vector<draw_list> const &lists,
+                  BLRgba32 clear_color) {
   ZoneScoped;
   ctx.fillAll(clear_color);
   for (auto const &list : lists) {
@@ -660,31 +665,19 @@ bool initialize(std::string_view font_filename, ImVec4 clear_color,
 }
 
 bool begin_frame() {
+  ZoneScoped;
   auto &io = ImGui::GetIO();
   if (auto *data = static_cast<imblend_context *>(io.BackendRendererUserData)) {
-    if (auto *platform_data =
-            static_cast<imx_context *>(io.BackendPlatformUserData)) {
-      auto &image = *platform_data->windows.front().image;
-      if (data->img.createFromData(image.width(), image.height(),
-                                   BL_FORMAT_PRGB32, image.data(),
-                                   image.stride()) != BL_SUCCESS) {
-        fmt::print("Failed to begin render with new shared image data\n");
-        return false;
-      }
-      io.DisplaySize = ImVec2(image.width(), image.height());
-    }
     if (data->ctx.begin(data->img, data->info) == BL_SUCCESS) {
-      render_draw_list(
-          data->ctx, data->draw_buffers[data->buffer++ % 2],
-          as_rgba(ImGui::ColorConvertFloat4ToU32(data->clear_color)));
+      auto &io = ImGui::GetIO();
+      io.DisplaySize = ImVec2(data->img.width(), data->img.height());
       return true;
     }
   }
   return false;
 }
 
-bool render_frame(ImDrawData const *draw_data, ImVec4 clear_color,
-                  BLContextFlushFlags flags) {
+bool draw_frame(ImDrawData const *draw_data, ImVec4 clear_color) {
   ZoneScoped;
   if (auto *context = static_cast<imblend_context *>(
           ImGui::GetIO().BackendRendererUserData)) {
@@ -693,7 +686,45 @@ bool render_frame(ImDrawData const *draw_data, ImVec4 clear_color,
       context->clear_color = clear_color;
     }
     process_draw_data(context->draw_buffers[context->buffer % 2], draw_data);
-    return context->ctx.flush(flags) == BL_SUCCESS;
+    enqueue_expose();
+    return true;
+  }
+  return false;
+}
+
+IMX_API bool end_frame(BLContextFlushFlags flags) {
+  ZoneScoped;
+  auto &io = ImGui::GetIO();
+  if (auto *data = static_cast<imblend_context *>(
+          ImGui::GetIO().BackendRendererUserData)) {
+    if (auto *platform_data =
+            static_cast<imx_context *>(io.BackendPlatformUserData)) {
+      XSync(platform_data->display.get(), False);
+      for (auto &window : platform_data->windows) {
+        if (window.size_updates[0] != std::numeric_limits<int>::max()) {
+          auto width = std::numeric_limits<int>::max();
+          auto height = width;
+          std::swap(window.size_updates[0], width);
+          std::swap(window.size_updates[1], height);
+          window.image = std::make_unique<Image>(platform_data->display.get(),
+                                                 platform_data->visual, width,
+                                                 height, window.image->depth());
+          ImGui::GetIO().DisplaySize = ImVec2(width, height);
+        }
+      }
+      auto &image = *platform_data->windows.front().image;
+      if (data->img.createFromData(image.width(), image.height(),
+                                   BL_FORMAT_PRGB32, image.data(),
+                                   image.stride()) != BL_SUCCESS) {
+        fmt::print("Failed to begin render with new shared image data\n");
+        return false;
+      }
+    }
+    ZoneScopedN("Flush Context");
+    render_frame(data->ctx, data->draw_buffers[data->buffer++ % 2],
+                 as_rgba(ImGui::ColorConvertFloat4ToU32(data->clear_color)));
+    auto result = data->ctx.flush(flags) == BL_SUCCESS;
+    return result;
   }
   return false;
 }

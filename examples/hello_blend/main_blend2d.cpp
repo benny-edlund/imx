@@ -1,5 +1,9 @@
+#include "blend2d.h"
 #include "imx/context.h"
 #include "imx/imx.h"
+#include <X11/Xlib.h>
+#include <blend2d/api.h>
+#include <blend2d/context.h>
 #include <cassert>
 #include <chrono>
 #include <fmt/core.h>
@@ -13,7 +17,10 @@ int main() {
   auto *ctx = ImGui::CreateContext();
   assert(ctx && "Unable to create imgui context");
 
-  imx::initialize(s_ttf_font);
+  BLContextCreateInfo info;
+  info.threadCount = 10;
+
+  imx::initialize(s_ttf_font, ImVec4{0.F, 0.F, 0.F, 1.F}, info);
 
   bool show_demo_window = false;
   bool show_another_window = false;
@@ -37,9 +44,6 @@ int main() {
   while (true) {
     imx::poll_events();
     if (deadline > std::chrono::steady_clock::now()) {
-      continue;
-    }
-    if (!imx::begin_frame()) {
       continue;
     }
     deadline += target_rate(1);
@@ -102,12 +106,9 @@ int main() {
       ImGui::End();
     }
     ImGui::Render();
-    if (!imx::render_frame(ImGui::GetDrawData(), clear_color, BL_CONTEXT_FLUSH_SYNC)) {
-      fmt::print("Imblend render failed\n");
+    if (!imx::draw_frame(ImGui::GetDrawData(), clear_color)) {
+      fmt::print("Failed to draw frame\n");
     }
-
-    FrameMark;
-    imx::enqueue_expose();
   }
   ImGui::DestroyContext();
   return 0;

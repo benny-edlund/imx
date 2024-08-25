@@ -18,10 +18,8 @@ IMX_API bool initialize(std::string_view font_filename,
                         BLImageData shared_image_data = {});
 IMX_API bool create_window(std::uint32_t width, std::uint32_t height,
                            std::uint32_t depth = IMX_32BIT_DEPTH);
-IMX_API void poll_events();
-IMX_API bool begin_frame();
-IMX_API bool
-render_frame(ImDrawData const *draw_data, ImVec4 clear_color = IMX_NO_COLOR,
-             BLContextFlushFlags flags = BL_CONTEXT_FLUSH_NO_FLAGS);
+IMX_API void poll_events(BLContextFlushFlags flags = BL_CONTEXT_FLUSH_NO_FLAGS);
+IMX_API bool draw_frame(ImDrawData const *draw_data,
+                        ImVec4 clear_color = IMX_NO_COLOR);
 
 } // namespace imx

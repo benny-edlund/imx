@@ -6,6 +6,7 @@
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
+#include <X11/extensions/shm.h>
 #include <X11/keysym.h>
 #include <cstddef>
 #include <cstdint>
@@ -519,151 +520,164 @@ ImGuiKey translate_key(XKeyEvent &event) {
   }
 }
 
-void poll_events() {
+void poll_events(BLContextFlushFlags flags) {
   if (auto *context =
           static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
+    const int ShmCompletionEvent =
+        XShmGetEventBase(context->display.get()) + ShmCompletion;
     while (XPending(context->display.get()) > 0) {
       XEvent event;
       XNextEvent(context->display.get(), &event);
-      switch (event.type) {
-      case FocusIn: {
-        auto &io = ImGui::GetIO();
-        io.AddFocusEvent(true);
-        break;
-      }
-      case FocusOut: {
-        auto &io = ImGui::GetIO();
-        io.AddFocusEvent(false);
-        break;
-      }
-      case MotionNotify: {
-        XMotionEvent motion_event = event.xmotion;
-        ImGuiIO &io = ImGui::GetIO();
-        io.AddMousePosEvent((float)motion_event.x, (float)motion_event.y);
-        break;
-      }
-      case ButtonPress: {
-        XButtonPressedEvent press_event = event.xbutton;
-        ImGuiIO &io = ImGui::GetIO();
-        switch (press_event.button) {
-        case Button1: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+      if (event.type != ShmCompletionEvent) {
+        switch (event.type) {
+        case FocusIn: {
+          TracyMessage("X11:FocusIn", 11);
+          auto &io = ImGui::GetIO();
+          io.AddFocusEvent(true);
           break;
         }
-        case Button2: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+        case FocusOut: {
+          TracyMessage("X11:FocusOut", 12);
+          auto &io = ImGui::GetIO();
+          io.AddFocusEvent(false);
           break;
         }
-        case Button3: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Middle, true);
+        case MotionNotify: {
+          TracyMessage("X11:MotionNotify", 16);
+          XMotionEvent motion_event = event.xmotion;
+          ImGuiIO &io = ImGui::GetIO();
+          io.AddMousePosEvent((float)motion_event.x, (float)motion_event.y);
           break;
         }
-        case Button4: {
-          io.AddMouseWheelEvent(1, 1);
-          break;
-        }
-        case Button5: {
+        case ButtonPress: {
+          TracyMessage("X11:ButtonPress", 15);
+          XButtonPressedEvent press_event = event.xbutton;
+          ImGuiIO &io = ImGui::GetIO();
+          switch (press_event.button) {
+          case Button1: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            break;
+          }
+          case Button2: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+            break;
+          }
+          case Button3: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Middle, true);
+            break;
+          }
+          case Button4: {
+            io.AddMouseWheelEvent(1, 1);
+            break;
+          }
+          case Button5: {
 
-          io.AddMouseWheelEvent(-1, -1);
+            io.AddMouseWheelEvent(-1, -1);
+            break;
+          }
+          default:
+            break;
+          }
+          break;
+        }
+        case ButtonRelease: {
+          TracyMessage("X11:ButtonRelease", 17);
+          XButtonPressedEvent press_event = event.xbutton;
+          ImGuiIO &io = ImGui::GetIO();
+          switch (press_event.button) {
+          case Button1: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            break;
+          }
+          case Button2: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
+            break;
+          }
+          case Button3: {
+            io.AddMouseButtonEvent(ImGuiMouseButton_Middle, false);
+            break;
+          }
+          default:
+            break;
+          }
+          break;
+        }
+        case KeyPress: {
+          TracyMessage("X11:KeyPress", 12);
+          XKeyEvent press_event = event.xkey;
+          ImGuiIO &io = ImGui::GetIO();
+          auto found =
+              std::find_if(context->windows.begin(), context->windows.end(),
+                           [&](auto const &handle) {
+                             return handle.window == press_event.window;
+                           });
+          if (found != context->windows.end()) {
+            imx_window &window = *found;
+            static std::array<char, 256> buffer;
+            KeySym key = 0;
+            Status status = 0;
+            std::size_t count = Xutf8LookupString(
+                window.input_context.get(), &event.xkey, buffer.data(),
+                buffer.size() - 1, &key, &status);
+            count = std::min(count, buffer.size() - 1);
+            buffer.at(count) = '\0';
+            if (count != 0U) {
+              io.AddInputCharactersUTF8(buffer.data());
+            }
+            io.AddKeyEvent(translate_key(press_event), true);
+          }
+          break;
+        }
+        case KeyRelease: {
+          TracyMessage("X11:KeyRelease", 14);
+          XKeyEvent press_event = event.xkey;
+          ImGuiIO &io = ImGui::GetIO();
+          io.AddKeyEvent(translate_key(press_event), false);
+          break;
+        }
+        case ConfigureNotify: {
+          TracyMessage("X11:ConfigureNotify", 19);
+          XConfigureEvent configure_event = event.xconfigure;
+          auto found =
+              std::find_if(context->windows.begin(), context->windows.end(),
+                           [&](auto const &handle) {
+                             return handle.window == configure_event.window;
+                           });
+          if (found != context->windows.end()) {
+            imx_window &window = *found;
+            if (configure_event.width != window.image->width() ||
+                configure_event.height != window.image->height()) {
+              window.size_updates[0] = configure_event.width;
+              window.size_updates[1] = configure_event.height;
+            }
+          }
+          break;
+        }
+        case Expose: {
+          TracyMessage("X11:Expose", 10);
+          XExposeEvent expose_event = event.xexpose;
+          auto found =
+              std::find_if(context->windows.begin(), context->windows.end(),
+                           [&](auto const &handle) {
+                             return handle.window == expose_event.window;
+                           });
+          if (found != context->windows.end()) {
+            imx::end_frame(flags);
+            imx_window &window = *found;
+            auto *image_data = window.image->image();
+            XShmPutImage(context->display.get(), window.window, window.gc.get(),
+                         image_data, 0, 0, 0, 0, image_data->width,
+                         image_data->height, True);
+          }
           break;
         }
         default:
           break;
         }
-        break;
-      }
-      case ButtonRelease: {
-        XButtonPressedEvent press_event = event.xbutton;
-        ImGuiIO &io = ImGui::GetIO();
-        switch (press_event.button) {
-        case Button1: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
-          break;
-        }
-        case Button2: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
-          break;
-        }
-        case Button3: {
-          io.AddMouseButtonEvent(ImGuiMouseButton_Middle, false);
-          break;
-        }
-        default:
-          break;
-        }
-        break;
-      }
-      case KeyPress: {
-        XKeyEvent press_event = event.xkey;
-        ImGuiIO &io = ImGui::GetIO();
-        auto found =
-            std::find_if(context->windows.begin(), context->windows.end(),
-                         [&](auto const &handle) {
-                           return handle.window == press_event.window;
-                         });
-        if (found != context->windows.end()) {
-          imx_window &window = *found;
-          static std::array<char, 256> buffer;
-          KeySym key = 0;
-          Status status = 0;
-          std::size_t count = Xutf8LookupString(
-              window.input_context.get(), &event.xkey, buffer.data(),
-              buffer.size() - 1, &key, &status);
-          count = std::min(count, buffer.size() - 1);
-          buffer.at(count) = '\0';
-          if (count != 0U) {
-            io.AddInputCharactersUTF8(buffer.data());
-          }
-          io.AddKeyEvent(translate_key(press_event), true);
-        }
-        break;
-      }
-      case KeyRelease: {
-        XKeyEvent press_event = event.xkey;
-        ImGuiIO &io = ImGui::GetIO();
-        io.AddKeyEvent(translate_key(press_event), false);
-        break;
-      }
-      case ConfigureNotify: {
-        XConfigureEvent configure_event = event.xconfigure;
-        auto found =
-            std::find_if(context->windows.begin(), context->windows.end(),
-                         [&](auto const &handle) {
-                           return handle.window == configure_event.window;
-                         });
-        if (found != context->windows.end()) {
-          imx_window &window = *found;
-          if (configure_event.width != window.image->width() ||
-              configure_event.height != window.image->height()) {
-            auto width = configure_event.width;
-            auto height = configure_event.height;
-            window.image =
-                std::make_unique<Image>(context->display.get(), context->visual,
-                                        width, height, window.image->depth());
-            ImGui::GetIO().DisplaySize = ImVec2(width, height);
-          }
-        }
-        break;
-      }
-      case Expose: {
-        XExposeEvent expose_event = event.xexpose;
-        auto found =
-            std::find_if(context->windows.begin(), context->windows.end(),
-                         [&](auto const &handle) {
-                           return handle.window == expose_event.window;
-                         });
-        if (found != context->windows.end()) {
-          ZoneScopedN("X11 (render)");
-          imx_window &window = *found;
-          auto *image_data = window.image->image();
-          XShmPutImage(context->display.get(), window.window, window.gc.get(),
-                       image_data, 0, 0, 0, 0, image_data->width,
-                       image_data->height, 0);
-        }
-        break;
-      }
-      default:
-        break;
+      } else {
+        TracyMessage("X11:ShmCompleted", 16);
+        FrameMark;
+        imx::begin_frame();
       }
     }
   }
