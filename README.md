@@ -1,5 +1,5 @@
 # imx
-An experimental ImGui backend built with Blend2d and X11.
+An experimental CPU only backend for ImGui built with Blend2d and X11
 
 Please visit and support these amazing products this library is built upon:
 
