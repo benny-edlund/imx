@@ -18,7 +18,8 @@ int main() {
   assert(ctx && "Unable to create imgui context");
 
   BLContextCreateInfo info;
-  info.threadCount = 10;
+  info.threadCount = 4
+  ;
 
   imx::initialize(s_ttf_font, ImVec4{0.F, 0.F, 0.F, 1.F}, info);
 
@@ -26,9 +27,9 @@ int main() {
   bool show_another_window = false;
   ImVec4 clear_color{0.F, 0.F, 0.F, 1.F};
   BLImage &icon = imx::add_texture();
-  if (icon.readFromFile("/home/benny/projects/imgui_blend_backend/icon.png") !=
-      BL_SUCCESS) {
-    fmt::print("Failed to load icon\n");
+  char const *const texture = "examples/hello_blend/blend2d_logo.png";
+  if (icon.readFromFile(texture) != BL_SUCCESS) {
+    fmt::print("Failed to load icon from {}\n", texture);
     _exit(-1);
   }
 
@@ -75,7 +76,7 @@ int main() {
 
       ImGui::SliderFloat("float", &f, 0.0F,
                          1.0F); // Edit 1 float using a slider from 0.0f to 1.0f
-      ImGui::ColorEdit3(
+      ImGui::ColorEdit4(
           "clear color",
           (float *)&clear_color); // Edit 3 floats representing a color
 
