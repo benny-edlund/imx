@@ -1,5 +1,9 @@
 # imx
 An experimental ImGui backend built with Blend2d and X11
+Please visit and support these amazing products:
+
+[Blend2d](https://blend2d.com)
+[ImGui](https://github.com/ocornut/imgui)
 
 # Building
 Conan is used to manage project dependencies. Documentation on using conan can be found at https://docs.conan.io/2
