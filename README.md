@@ -1,7 +1,6 @@
 # imx
 An experimental ImGui backend built with Blend2d and X11
-Please visit and support these amazing products:
-
+Please visit and support these amazing products this library is built upon:
 [Blend2d](https://blend2d.com)
 [ImGui](https://github.com/ocornut/imgui)
 
