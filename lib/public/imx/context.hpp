@@ -1,6 +1,6 @@
 #pragma once
 
-#include "imx/api.h"
+#include "imx/api.hpp"
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>

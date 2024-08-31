@@ -1,5 +1,5 @@
-#include "imx/context.h"
-#include "imx/imx.h"
+#include "imx/context.hpp"
+#include "imx/imx.hpp"
 #include <X11/Xlib.h>
 #include <algorithm>
 #include <blend2d.h>
@@ -301,7 +301,7 @@ bool create_glyph(std::vector<shape> &output, ImDrawVert const &vtx,
           ImGui::GetIO().BackendRendererUserData)) {
     std::array<float, 2> uv = {vtx.uv.x, vtx.uv.y};
     auto key = uv_to_key(uv[0], uv[1]);
-    auto H = g_font_look_up.begin()->first;
+    auto H = g_font_look_up.cbegin()->first;
     auto found = g_font_look_up.find(key);
     if (found != g_font_look_up.cend()) { // TODO: Try a vector instead
       output.push_back(text<1>{

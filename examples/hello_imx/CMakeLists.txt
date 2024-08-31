@@ -5,7 +5,7 @@ find_package(GSL)
 find_package(Tracy)
 # find_package(glfw3)
 
-add_executable( hello_imx main_blend2d.cpp )
+add_executable( hello_imx main.cpp )
 target_compile_definitions(hello_imx PRIVATE "TRACY_ENABLE")
 target_link_libraries(hello_imx imx imgui::imgui blend2d::blend2d X11 Xext fmt::fmt Tracy::TracyClient )
 install(TARGETS hello_imx DESTINATION "." RUNTIME DESTINATION bin )

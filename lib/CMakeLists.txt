@@ -9,9 +9,9 @@ find_package(imgui)
 find_package(fmt)
 
 set(HEADER_LIST 
-	${CMAKE_CURRENT_BINARY_DIR}/imx/api.h
-	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/imx.h
-	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/context.h
+	${CMAKE_CURRENT_BINARY_DIR}/imx/api.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/imx.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/public/imx/context.hpp
 )
 
 # # Static library
@@ -41,7 +41,7 @@ target_include_directories(
 generate_export_header(
   imx
   BASE_NAME IMX
-  EXPORT_FILE_NAME imx/api.h
+  EXPORT_FILE_NAME imx/api.hpp
   EXPORT_MACRO_NAME IMX_API
   NO_EXPORT_MACRO_NAME IMX_HIDDEN
 )
@@ -55,8 +55,8 @@ RUNTIME DESTINATION bin
 INCLUDES DESTINATION include
 )
 
-install(DIRECTORY public/imx DESTINATION include FILES_MATCHING PATTERN "*.h")
-install(FILES ${PROJECT_BINARY_DIR}/lib/imx/api.h DESTINATION include/imx)
+install(DIRECTORY public/imx DESTINATION include FILES_MATCHING PATTERN "*.hpp")
+install(FILES ${PROJECT_BINARY_DIR}/lib/imx/api.hpp DESTINATION include/imx)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file( imxConfigVersion.cmake VERSION "${imx_VERSION}" COMPATIBILITY AnyNewerVersion )

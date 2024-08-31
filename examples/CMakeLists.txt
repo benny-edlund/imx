@@ -1,1 +1,1 @@
-add_subdirectory(hello_blend)
+add_subdirectory(hello_imx)

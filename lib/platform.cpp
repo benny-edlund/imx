@@ -1,5 +1,5 @@
-#include "imx/context.h"
-#include "imx/imx.h"
+#include "imx/context.hpp"
+#include "imx/imx.hpp"
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
@@ -116,6 +116,7 @@ imx_context::imx_context()
 
 bool create_window(std::uint32_t width, std::uint32_t height,
                    std::uint32_t depth) {
+  ZoneScoped;
   if (auto *context =
           static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     XSetWindowAttributes attrs;
@@ -156,6 +157,7 @@ bool create_window(std::uint32_t width, std::uint32_t height,
 
 // Function to translate X11 key codes to ImGui key codes
 ImGuiKey translate_key(XKeyEvent &event) {
+  ZoneScoped;
   KeySym keysym = XLookupKeysym(&event, 0);
   if ((event.state & ShiftMask) != 0U) {
     keysym = XLookupKeysym(&event, 1);
@@ -520,7 +522,9 @@ ImGuiKey translate_key(XKeyEvent &event) {
   }
 }
 
-void poll_events(BLContextFlushFlags flags) {
+bool poll_events(BLContextFlushFlags flags) {
+  ZoneScoped;
+  bool processed_events = false;
   if (auto *context =
           static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     const int ShmCompletionEvent =
@@ -534,12 +538,14 @@ void poll_events(BLContextFlushFlags flags) {
           TracyMessage("X11:FocusIn", 11);
           auto &io = ImGui::GetIO();
           io.AddFocusEvent(true);
+          processed_events = true;
           break;
         }
         case FocusOut: {
           TracyMessage("X11:FocusOut", 12);
           auto &io = ImGui::GetIO();
           io.AddFocusEvent(false);
+          processed_events = true;
           break;
         }
         case MotionNotify: {
@@ -547,6 +553,7 @@ void poll_events(BLContextFlushFlags flags) {
           XMotionEvent motion_event = event.xmotion;
           ImGuiIO &io = ImGui::GetIO();
           io.AddMousePosEvent((float)motion_event.x, (float)motion_event.y);
+          processed_events = true;
           break;
         }
         case ButtonPress: {
@@ -556,23 +563,28 @@ void poll_events(BLContextFlushFlags flags) {
           switch (press_event.button) {
           case Button1: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            processed_events = true;
             break;
           }
           case Button2: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Right, true);
+            processed_events = true;
             break;
           }
           case Button3: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Middle, true);
+            processed_events = true;
             break;
           }
           case Button4: {
             io.AddMouseWheelEvent(1, 1);
+            processed_events = true;
             break;
           }
           case Button5: {
 
             io.AddMouseWheelEvent(-1, -1);
+            processed_events = true;
             break;
           }
           default:
@@ -587,14 +599,17 @@ void poll_events(BLContextFlushFlags flags) {
           switch (press_event.button) {
           case Button1: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            processed_events = true;
             break;
           }
           case Button2: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Right, false);
+            processed_events = true;
             break;
           }
           case Button3: {
             io.AddMouseButtonEvent(ImGuiMouseButton_Middle, false);
+            processed_events = true;
             break;
           }
           default:
@@ -625,6 +640,7 @@ void poll_events(BLContextFlushFlags flags) {
               io.AddInputCharactersUTF8(buffer.data());
             }
             io.AddKeyEvent(translate_key(press_event), true);
+            processed_events = true;
           }
           break;
         }
@@ -633,6 +649,7 @@ void poll_events(BLContextFlushFlags flags) {
           XKeyEvent press_event = event.xkey;
           ImGuiIO &io = ImGui::GetIO();
           io.AddKeyEvent(translate_key(press_event), false);
+          processed_events = true;
           break;
         }
         case ConfigureNotify: {
@@ -649,6 +666,7 @@ void poll_events(BLContextFlushFlags flags) {
                 configure_event.height != window.image->height()) {
               window.size_updates[0] = configure_event.width;
               window.size_updates[1] = configure_event.height;
+              processed_events = true;
             }
           }
           break;
@@ -668,6 +686,7 @@ void poll_events(BLContextFlushFlags flags) {
             XShmPutImage(context->display.get(), window.window, window.gc.get(),
                          image_data, 0, 0, 0, 0, image_data->width,
                          image_data->height, True);
+            processed_events = true;
           }
           break;
         }
@@ -678,12 +697,15 @@ void poll_events(BLContextFlushFlags flags) {
         TracyMessage("X11:ShmCompleted", 16);
         FrameMark;
         imx::begin_frame();
+        processed_events = true;
       }
     }
   }
+  return processed_events;
 }
 
 bool enqueue_expose() {
+  ZoneScoped;
   if (auto *context =
           static_cast<imx_context *>(ImGui::GetIO().BackendPlatformUserData)) {
     for (auto const &handle : context->windows) {
