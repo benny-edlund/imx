@@ -18,15 +18,16 @@ set(MARKER_FILE "${CMAKE_BINARY_DIR}/ran_command.marker")
 if(NOT EXISTS "${MARKER_FILE}")
     # Run conan install command with the appropriate profile before configuring the project
     execute_process(
-        COMMAND conan install . --profile "${CMAKE_CURRENT_LIST_DIR}/.conan2/dynamic" --build=missing -c tools.system.package_manager:mode=install --settings=build_type=${BUILD_TYPE}
+        COMMAND conan install "${CMAKE_CURRENT_LIST_DIR}" --profile "${CMAKE_CURRENT_LIST_DIR}/.conan2/dynamic" --build=missing -c tools.system.package_manager:mode=install --settings=build_type=${BUILD_TYPE}
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../"
         RESULT_VARIABLE CONAN_INSTALL_RESULT
         OUTPUT_VARIABLE CONAN_INSTALL_OUTPUT
     )
 endif()
 
 if(NOT "${CONAN_INSTALL_RESULT}" STREQUAL "0")
-    message(FATAL_ERROR "Conan install failed: ${CONAN_INSTALL_OUTPUT}")
+    message(FATAL_ERROR "Conan install failed: ${CONAN_INSTALL_OUTPUT} [${CONAN_INSTALL_RESULT}]")
 endif()
 
-set( CONAN_TOOLCHAIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/generators/conan_toolchain.cmake")
+set( CONAN_TOOLCHAIN_FILE "${CMAKE_BINARY_DIR}/generators/conan_toolchain.cmake")
 message( "Conan toochain file generated at: ${CONAN_TOOLCHAIN_FILE}" )

@@ -9,3 +9,6 @@ add_executable( hello_imx main.cpp )
 target_compile_definitions(hello_imx PRIVATE "TRACY_ENABLE")
 target_link_libraries(hello_imx imx imgui::imgui blend2d::blend2d X11 Xext fmt::fmt Tracy::TracyClient )
 install(TARGETS hello_imx DESTINATION "." RUNTIME DESTINATION bin )
+
+# Copy logo.png to the build directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/blend2d_logo.png ${CMAKE_CURRENT_BINARY_DIR}/blend2d_logo.png COPYONLY)

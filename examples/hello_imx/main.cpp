@@ -27,7 +27,7 @@ int main() {
   bool show_another_window = false;
   ImVec4 clear_color{0.F, 0.F, 0.F, 1.F};
   BLImage &icon = imx::add_texture();
-  char const *const texture = "examples/hello_blend/blend2d_logo.png";
+  char const *const texture = "blend2d_logo.png";
   if (icon.readFromFile(texture) != BL_SUCCESS) {
     fmt::print("Failed to load icon from {}\n", texture);
     _exit(-1);

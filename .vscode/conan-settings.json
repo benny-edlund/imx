@@ -1,0 +1,84 @@
+{
+    "profiles": [
+        {
+            "name": "test_package-Profiles found in the cache:",
+            "conanFile": "${workspaceFolder}/test_package/conanfile.py",
+            "profile": "Profiles found in the cache:",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "imx-Profiles found in the cache:",
+            "conanFile": "${workspaceFolder}/conanfile.py",
+            "profile": "Profiles found in the cache:",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "test_package-debug",
+            "conanFile": "${workspaceFolder}/test_package/conanfile.py",
+            "profile": "debug",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "imx-debug",
+            "conanFile": "${workspaceFolder}/conanfile.py",
+            "profile": "debug",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "test_package",
+            "conanFile": "${workspaceFolder}/test_package/conanfile.py",
+            "profile": "default",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "imx",
+            "conanFile": "${workspaceFolder}/conanfile.py",
+            "profile": "default",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "test_package-release",
+            "conanFile": "${workspaceFolder}/test_package/conanfile.py",
+            "profile": "release",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        },
+        {
+            "name": "imx-release",
+            "conanFile": "${workspaceFolder}/conanfile.py",
+            "profile": "release",
+            "installArg": "",
+            "buildArg": "",
+            "createUser": "disroop",
+            "createChannel": "development",
+            "createArg": ""
+        }
+    ]
+}

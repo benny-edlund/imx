@@ -1,8 +1,46 @@
 {
-    "version": 8,
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 22,
+        "patch": 0
+    },
     "configurePresets": [
         {
             "name": "Release",
+            "displayName": "Release Build",
+            "description": "Generate an optimized build with minimal debug information.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/Release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG"
+            }
+        },
+        {
+            "name": "Debug",
+            "displayName": "Debug Build",
+            "description": "Generate a debug build with full debug symbols.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/Debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS": "-g"
+            }
+        },
+        {
+            "name": "Sanitized",
+            "displayName": "Sanitized Build",
+            "description": "Generate a build with address and undefined behavior sanitizers.",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/Sanitized",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+            }
+        },
+        {
+            "name": "ConanDebug",
             "displayName": "Configure preset using toolchain file",
             "description": "Sets Ninja generator, build and install directory",
             "generator": "Ninja",
@@ -12,6 +50,20 @@
                 "CMAKE_TOOLCHAIN_FILE": "",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
             }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Release",
+            "configurePreset": "Release"
+        },
+        {
+            "name": "Debug",
+            "configurePreset": "Debug"
+        },
+        {
+            "name": "Sanitized",
+            "configurePreset": "Sanitized"
         }
     ]
 }
